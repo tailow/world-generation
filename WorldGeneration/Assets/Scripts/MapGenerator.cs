@@ -9,13 +9,20 @@ public class MapGenerator : MonoBehaviour
 
     public int width;
     public int height;
+
+    int pointX;
+    int pointY;
+
     public float depth;
     public float scale;
     public float edgeStartDistance;
+    public float lacunarity;
+    public float persistance;
+    public float octaves;
 
     #endregion
 
-    void Update()
+    void Start()
     {
         Terrain terrain = GetComponent<Terrain>();
 
@@ -41,9 +48,7 @@ public class MapGenerator : MonoBehaviour
         {
             for (int x = 0; x < width; x++)
             {
-                float pointHeightMultiplier = GetPointHeight(new Vector2(x, y));
-
-                noiseMap[x, y] = Mathf.PerlinNoise((float)x / width * scale, (float)y / height * scale) * pointHeightMultiplier;
+                noiseMap[x, y] = GetPointHeight(new Vector2(x, y));
             }
         }
 
@@ -54,8 +59,32 @@ public class MapGenerator : MonoBehaviour
     {
         Vector2 centerPoint = new Vector2(width / 2, height / 2);
 
-        float heightMultiplier = 1 - Mathf.Clamp(Vector2.Distance(point, centerPoint), 0f, 1f);
+        float pointHeight = 0;
+        float amplitude = 1;
+        float frequency = 1;
 
-        return heightMultiplier;
+        pointX = (int)point.x;
+        pointY = (int)point.y;
+
+        float sampleX;
+        float sampleY;
+
+        for (int i = 0; i < octaves; i++)
+        {
+            sampleX = pointX / scale * frequency;
+            sampleY = pointY / scale * frequency;
+
+            float perlinValue = Mathf.PerlinNoise(sampleX, sampleY);
+            pointHeight += perlinValue * amplitude;
+
+            frequency *= lacunarity;
+            amplitude *= persistance;
+        }
+
+        float heightMultiplier = 1f - (Vector2.Distance(point, centerPoint) / width * edgeStartDistance);
+
+        //pointHeight = Mathf.InverseLerp(0f, 1f, pointHeight) * heightMultiplier;
+
+        return pointHeight * heightMultiplier;
     }
 }
