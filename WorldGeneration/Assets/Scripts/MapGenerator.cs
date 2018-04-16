@@ -4,12 +4,7 @@ using UnityEngine;
 
 public class MapGenerator : MonoBehaviour
 {
-
     #region Variables
-
-    public int size;
-    int width;
-    int height;
 
     int offsetX;
     int offsetY;
@@ -17,24 +12,31 @@ public class MapGenerator : MonoBehaviour
     int pointX;
     int pointY;
 
+    public float fallOffStrength;
+    public float fallOffStart;
     public float depth;
     public float scale;
     public float edgeStartDistance;
     public float lacunarity;
+
+    [Range(0, 1)]
     public float persistance;
 
     public int octaves;
     public int seed;
 
+    [Range(0, 6)]
+    public int levelOfDetail;
+    const int size = 97;
+
     public bool autoUpdate;
+
+    public AnimationCurve meshHeightCurve;
 
     #endregion
 
     public void GenerateMap()
     {
-        width = size;
-        height = size;
-
         System.Random rng = new System.Random(seed);
 
         offsetX = rng.Next(-50000, 50000);
@@ -45,16 +47,16 @@ public class MapGenerator : MonoBehaviour
 
     void GenerateTerrain(MeshFilter terrainMesh)
     {
-        terrainMesh.sharedMesh = MeshGenerator.GenerateTerrainMesh(GenerateNoiseMap()).CreateMesh();
+        terrainMesh.sharedMesh = MeshGenerator.GenerateTerrainMesh(GenerateNoiseMap(), meshHeightCurve, levelOfDetail, depth).CreateMesh();
     }
 
     float[,] GenerateNoiseMap()
     {
-        float[,] noiseMap = new float[height, width];
+        float[,] noiseMap = new float[size, size];
 
-        for (int y = 0; y < height; y++)
+        for (int y = 0; y < size; y++)
         {
-            for (int x = 0; x < width; x++)
+            for (int x = 0; x < size; x++)
             {
                 noiseMap[x, y] = GetPointHeight(new Vector2(x, y));
             }
@@ -65,7 +67,7 @@ public class MapGenerator : MonoBehaviour
 
     float GetPointHeight(Vector2 point)
     {
-        Vector2 centerPoint = new Vector2(width / 2, height / 2);
+        Vector2 centerPoint = new Vector2(size / 2, size / 2);
 
         float pointHeight = 0;
         float amplitude = 1;
@@ -77,8 +79,8 @@ public class MapGenerator : MonoBehaviour
         float sampleX;
         float sampleY;
 
-        float halfHeight = height / 2f;
-        float halfWidth = width / 2f;
+        float halfHeight = size / 2f;
+        float halfWidth = size / 2f;
 
         for (int i = 0; i < octaves; i++)
         {
@@ -92,8 +94,15 @@ public class MapGenerator : MonoBehaviour
             amplitude *= persistance;
         }
 
-        float heightMultiplier = 1f - (Vector2.Distance(point, centerPoint) / width * edgeStartDistance);
+        float distanceFromEdge = Mathf.Max(Mathf.Abs(pointX / (float)size * 2 - 1), Mathf.Abs(pointY / (float)size * 2 - 1));
 
-        return pointHeight * heightMultiplier * depth;
+        return 1 - pointHeight - EdgeHeightMultiplier(distanceFromEdge);
+    }
+
+    float EdgeHeightMultiplier(float distanceFromEdge)
+    {
+        float heightMultiplier = Mathf.Pow(distanceFromEdge, fallOffStrength) / (Mathf.Pow(distanceFromEdge, fallOffStart) + Mathf.Pow(fallOffStart - fallOffStart * distanceFromEdge, fallOffStrength));
+
+        return heightMultiplier;
     }
 }

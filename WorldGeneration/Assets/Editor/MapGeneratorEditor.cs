@@ -23,5 +23,4 @@ public class MapGeneratorEditor : Editor
             mapGen.GenerateMap();
         }
     }
-
 }
