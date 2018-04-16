@@ -7,8 +7,9 @@ public class MapGenerator : MonoBehaviour
 
     #region Variables
 
-    public int width;
-    public int height;
+    public int size;
+    int width;
+    int height;
 
     int pointX;
     int pointY;
@@ -18,29 +19,25 @@ public class MapGenerator : MonoBehaviour
     public float edgeStartDistance;
     public float lacunarity;
     public float persistance;
-    public float octaves;
+
+    public int octaves;
 
     #endregion
 
-    void Start()
+    void Update()
     {
-        Terrain terrain = GetComponent<Terrain>();
+        width = size;
+        height = size;
 
-        terrain.terrainData = GenerateData(terrain.terrainData);
+        GenerateTerrain(GetComponent<MeshFilter>());
     }
 
-    TerrainData GenerateData(TerrainData terrainData)
+    void GenerateTerrain(MeshFilter terrainMesh)
     {
-        terrainData.heightmapResolution = width + 1;
-        terrainData.size = new Vector3(width, depth, height);
-
-        GenerateNoise();
-        terrainData.SetHeights(0, 0, GenerateNoise());
-
-        return terrainData;
+        terrainMesh.sharedMesh = MeshGenerator.GenerateTerrainMesh(GenerateNoiseMap()).CreateMesh();
     }
 
-    float[,] GenerateNoise()
+    float[,] GenerateNoiseMap()
     {
         float[,] noiseMap = new float[height, width];
 
@@ -83,8 +80,6 @@ public class MapGenerator : MonoBehaviour
 
         float heightMultiplier = 1f - (Vector2.Distance(point, centerPoint) / width * edgeStartDistance);
 
-        //pointHeight = Mathf.InverseLerp(0f, 1f, pointHeight) * heightMultiplier;
-
-        return pointHeight * heightMultiplier;
+        return pointHeight * heightMultiplier * depth;
     }
 }
