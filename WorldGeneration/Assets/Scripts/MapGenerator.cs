@@ -11,6 +11,9 @@ public class MapGenerator : MonoBehaviour
     int width;
     int height;
 
+    int offsetX;
+    int offsetY;
+
     int pointX;
     int pointY;
 
@@ -21,13 +24,21 @@ public class MapGenerator : MonoBehaviour
     public float persistance;
 
     public int octaves;
+    public int seed;
+
+    public bool autoUpdate;
 
     #endregion
 
-    void Update()
+    public void GenerateMap()
     {
         width = size;
         height = size;
+
+        System.Random rng = new System.Random(seed);
+
+        offsetX = rng.Next(-50000, 50000);
+        offsetY = rng.Next(-50000, 50000);
 
         GenerateTerrain(GetComponent<MeshFilter>());
     }
@@ -66,10 +77,13 @@ public class MapGenerator : MonoBehaviour
         float sampleX;
         float sampleY;
 
+        float halfHeight = height / 2f;
+        float halfWidth = width / 2f;
+
         for (int i = 0; i < octaves; i++)
         {
-            sampleX = pointX / scale * frequency;
-            sampleY = pointY / scale * frequency;
+            sampleX = (pointX - halfWidth) / scale * frequency + offsetX;
+            sampleY = (pointY - halfHeight) / scale * frequency + offsetY;
 
             float perlinValue = Mathf.PerlinNoise(sampleX, sampleY);
             pointHeight += perlinValue * amplitude;
