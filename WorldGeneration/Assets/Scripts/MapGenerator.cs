@@ -8,31 +8,37 @@ public class MapGenerator : MonoBehaviour
 
     int offsetX;
     int offsetY;
-
     int pointX;
     int pointY;
+    int mapSize;
+    int amountOfChunksPerLine;
+
+    const int chunkSize = 97;
 
     public Region[] regions;
 
     public GameObject chunkPrefab;
+
     public Transform terrainParent;
+
+    float minPointHeight;
+    float maxPointHeight;
 
     public float depth;
     public float scale;
     public float lacunarity;
+    public float fallOffStrength;
+    public float fallOffStart;
 
     [Range(0, 1)]
     public float persistance;
 
     public int octaves;
     public int seed;
+    public int amountOfChunks;
 
     [Range(0, 6)]
     public int levelOfDetail;
-    const int chunkSize = 97;
-    int mapSize;
-    public int amountOfChunks;
-    int amountOfChunksPerLine;
 
     public bool autoUpdate;
 
@@ -47,7 +53,7 @@ public class MapGenerator : MonoBehaviour
 
     public void GenerateChunks()
     {
-        mapSize = chunkSize * amountOfChunks;
+        mapSize = chunkSize * amountOfChunksPerLine;
 
         amountOfChunksPerLine = (int)Mathf.Sqrt(amountOfChunks);
 
@@ -81,7 +87,6 @@ public class MapGenerator : MonoBehaviour
         {
             GenerateTerrain(terrainParent.GetChild(i).gameObject);
         }
-
     }
 
     public void DeleteChunks()
@@ -131,19 +136,49 @@ public class MapGenerator : MonoBehaviour
         float sampleX;
         float sampleY;
 
+        float maxPossibleHeight = 0;
+
         for (int i = 0; i < octaves; i++)
         {
-            sampleX = (pointX + offsetX) / scale * frequency;
-            sampleY = (pointY + offsetY) / scale * frequency;
+            sampleX = pointX / scale * frequency + offsetX;
+            sampleY = pointY / scale * frequency + offsetY;
 
             float perlinValue = Mathf.PerlinNoise(sampleX, sampleY);
             pointHeight += perlinValue * amplitude;
+
+            maxPossibleHeight += amplitude;
 
             frequency *= lacunarity;
             amplitude *= persistance;
         }
 
-        return 1 - pointHeight;
+        pointHeight = pointHeight / maxPossibleHeight;
+
+        return pointHeight - GenerateFallOffMap(new Vector2(pointX, pointY), new Vector2(mapSize / 2, 0));
+    }
+
+    float GenerateFallOffMap(Vector2 point, Vector2 center)
+    {
+        float distanceFromCenter = Vector2.Distance(center, point);
+
+        float currentAlpha = 1;
+        float a = fallOffStrength;
+        float b = fallOffStart;
+
+
+        if (1 - (distanceFromCenter / chunkSize) >= 0)
+        {
+            currentAlpha = 1 - (distanceFromCenter / chunkSize);
+        }
+
+        else
+        {
+            currentAlpha = 0;
+        }
+
+        float fallOffMultiplier = Mathf.Pow(currentAlpha, -a) / (Mathf.Pow(currentAlpha, -a) + Mathf.Pow(b - b * currentAlpha, -a));
+
+        return fallOffMultiplier;
     }
 
     Texture2D GenerateColorMap(GameObject chunk)
