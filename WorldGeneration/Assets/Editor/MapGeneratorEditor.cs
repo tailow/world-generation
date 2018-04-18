@@ -22,5 +22,10 @@ public class MapGeneratorEditor : Editor
         {
             mapGen.GenerateChunks();
         }
+
+        if (GUILayout.Button("Delete all chunks"))
+        {
+            mapGen.DeleteChunks();
+        }
     }
 }

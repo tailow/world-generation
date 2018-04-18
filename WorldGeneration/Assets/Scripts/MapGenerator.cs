@@ -17,10 +17,6 @@ public class MapGenerator : MonoBehaviour
     public GameObject chunkPrefab;
     public Transform terrainParent;
 
-    GameObject[,] chunkArray;
-
-    public float fallOffStrength;
-    public float fallOffStart;
     public float depth;
     public float scale;
     public float lacunarity;
@@ -34,7 +30,9 @@ public class MapGenerator : MonoBehaviour
     [Range(0, 6)]
     public int levelOfDetail;
     const int chunkSize = 97;
+    int mapSize;
     public int amountOfChunks;
+    int amountOfChunksPerLine;
 
     public bool autoUpdate;
 
@@ -42,24 +40,32 @@ public class MapGenerator : MonoBehaviour
 
     #endregion
 
-    private void Start()
+    void Start()
     {
         GenerateChunks();
     }
 
     public void GenerateChunks()
     {
-        int amountOfChunksPerLine = (int)Mathf.Sqrt(amountOfChunks);
-       
+        mapSize = chunkSize * amountOfChunks;
+
+        amountOfChunksPerLine = (int)Mathf.Sqrt(amountOfChunks);
+
         System.Random rng = new System.Random(seed);
 
         offsetX = rng.Next(-50000, 50000);
         offsetY = rng.Next(-50000, 50000);
 
+        if (terrainParent.childCount != amountOfChunks)
+        {
+            for (int i = 0; i < terrainParent.childCount; i++)
+            {
+                DestroyImmediate(terrainParent.GetChild(i).gameObject);
+            }
+        }
+
         if (terrainParent.childCount == 0)
         {
-            chunkArray = new GameObject[amountOfChunksPerLine, amountOfChunksPerLine];
-
             for (int y = 0; y < amountOfChunksPerLine; y++)
             {
                 for (int x = 0; x < amountOfChunksPerLine; x++)
@@ -67,29 +73,38 @@ public class MapGenerator : MonoBehaviour
                     GameObject chunk = Instantiate(chunkPrefab, new Vector3(x * (chunkSize - 1), 0, y * (chunkSize - 1)), Quaternion.identity);
 
                     chunk.transform.parent = terrainParent;
-
-                    chunkArray[x, y] = chunk;
                 }
             }
         }
 
-        for (int y = 0; y < amountOfChunksPerLine; y++)
+        for (int i = 0; i < terrainParent.childCount; i++)
         {
-            for (int x = 0; x < amountOfChunksPerLine; x++)
+            GenerateTerrain(terrainParent.GetChild(i).gameObject);
+        }
+
+    }
+
+    public void DeleteChunks()
+    {
+        if (terrainParent.childCount > 0)
+        {
+            for (int i = 0; i < amountOfChunks; i++)
             {
-                GenerateTerrain(chunkArray[x, y].GetComponent<MeshFilter>());
+                DestroyImmediate(terrainParent.GetChild(0).gameObject);
             }
         }
     }
 
-    public void GenerateTerrain(MeshFilter terrainMesh)
+    public void GenerateTerrain(GameObject chunk)
     {
-        terrainMesh.sharedMesh = MeshGenerator.GenerateTerrainMesh(GenerateNoiseMap(), meshHeightCurve, levelOfDetail, depth).CreateMesh();
+        MeshFilter terrainMesh = chunk.GetComponent<MeshFilter>();
 
-        terrainMesh.gameObject.GetComponent<MeshRenderer>().sharedMaterial.mainTexture = GenerateColorMap();
+        terrainMesh.mesh = MeshGenerator.GenerateTerrainMesh(GenerateNoiseMap(chunk), meshHeightCurve, levelOfDetail, depth).CreateMesh();
+
+        terrainMesh.gameObject.GetComponent<MeshRenderer>().material.mainTexture = GenerateColorMap(chunk);
     }
 
-    float[,] GenerateNoiseMap()
+    float[,] GenerateNoiseMap(GameObject chunk)
     {
         float[,] noiseMap = new float[chunkSize, chunkSize];
 
@@ -97,32 +112,29 @@ public class MapGenerator : MonoBehaviour
         {
             for (int x = 0; x < chunkSize; x++)
             {
-                noiseMap[x, y] = GetPointHeight(new Vector2(x, y));
+                noiseMap[x, y] = GetPointHeight(new Vector2(x, y), chunk);
             }
         }
 
         return noiseMap;
     }
 
-    float GetPointHeight(Vector2 point)
+    float GetPointHeight(Vector2 point, GameObject chunk)
     {
         float pointHeight = 0;
         float amplitude = 1;
         float frequency = 1;
 
-        pointX = (int)point.x;
-        pointY = (int)point.y;
+        pointX = (int)point.x + (int)chunk.transform.position.x;
+        pointY = (int)point.y - (int)chunk.transform.position.z;
 
         float sampleX;
         float sampleY;
 
-        float halfHeight = chunkSize / 2f;
-        float halfWidth = chunkSize / 2f;
-
         for (int i = 0; i < octaves; i++)
         {
-            sampleX = (pointX - halfWidth) / scale * frequency + offsetX;
-            sampleY = (pointY - halfHeight) / scale * frequency + offsetY;
+            sampleX = (pointX + offsetX) / scale * frequency;
+            sampleY = (pointY + offsetY) / scale * frequency;
 
             float perlinValue = Mathf.PerlinNoise(sampleX, sampleY);
             pointHeight += perlinValue * amplitude;
@@ -131,19 +143,10 @@ public class MapGenerator : MonoBehaviour
             amplitude *= persistance;
         }
 
-        float distanceFromEdge = Mathf.Max(Mathf.Abs(pointX / (float)chunkSize * 2 - 1), Mathf.Abs(pointY / (float)chunkSize * 2 - 1));
-
-        return 1 - pointHeight - EdgeHeightMultiplier(distanceFromEdge);
+        return 1 - pointHeight;
     }
 
-    float EdgeHeightMultiplier(float distanceFromEdge)
-    {
-        float heightMultiplier = Mathf.Pow(distanceFromEdge, fallOffStrength) / (Mathf.Pow(distanceFromEdge, fallOffStart) + Mathf.Pow(fallOffStart - fallOffStart * distanceFromEdge, fallOffStrength));
-
-        return heightMultiplier;
-    }
-
-    Texture2D GenerateColorMap()
+    Texture2D GenerateColorMap(GameObject chunk)
     {
         Texture2D colorTexture = new Texture2D(chunkSize, chunkSize);
 
@@ -155,7 +158,7 @@ public class MapGenerator : MonoBehaviour
             {
                 for (int i = 0; i < regions.Length; i++)
                 {
-                    if (GetPointHeight(new Vector2(x, y)) >= regions[i].startHeight)
+                    if (GetPointHeight(new Vector2(x, y), chunk) >= regions[i].startHeight)
                     {
                         colorMap[y * chunkSize + x] = regions[i].color;
                     }
