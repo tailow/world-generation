@@ -14,6 +14,11 @@ public class MapGenerator : MonoBehaviour
 
     public Region[] regions;
 
+    public GameObject chunkPrefab;
+    public Transform terrainParent;
+
+    GameObject[,] chunkArray;
+
     public float fallOffStrength;
     public float fallOffStart;
     public float depth;
@@ -28,7 +33,8 @@ public class MapGenerator : MonoBehaviour
 
     [Range(0, 6)]
     public int levelOfDetail;
-    const int size = 97;
+    const int chunkSize = 97;
+    public int amountOfChunks;
 
     public bool autoUpdate;
 
@@ -38,20 +44,45 @@ public class MapGenerator : MonoBehaviour
 
     private void Start()
     {
-        GenerateMap();
+        GenerateChunks();
     }
 
-    public void GenerateMap()
+    public void GenerateChunks()
     {
+        int amountOfChunksPerLine = (int)Mathf.Sqrt(amountOfChunks);
+       
         System.Random rng = new System.Random(seed);
 
         offsetX = rng.Next(-50000, 50000);
         offsetY = rng.Next(-50000, 50000);
 
-        GenerateTerrain(GetComponent<MeshFilter>());
+        if (terrainParent.childCount == 0)
+        {
+            chunkArray = new GameObject[amountOfChunksPerLine, amountOfChunksPerLine];
+
+            for (int y = 0; y < amountOfChunksPerLine; y++)
+            {
+                for (int x = 0; x < amountOfChunksPerLine; x++)
+                {
+                    GameObject chunk = Instantiate(chunkPrefab, new Vector3(x * (chunkSize - 1), 0, y * (chunkSize - 1)), Quaternion.identity);
+
+                    chunk.transform.parent = terrainParent;
+
+                    chunkArray[x, y] = chunk;
+                }
+            }
+        }
+
+        for (int y = 0; y < amountOfChunksPerLine; y++)
+        {
+            for (int x = 0; x < amountOfChunksPerLine; x++)
+            {
+                GenerateTerrain(chunkArray[x, y].GetComponent<MeshFilter>());
+            }
+        }
     }
 
-    void GenerateTerrain(MeshFilter terrainMesh)
+    public void GenerateTerrain(MeshFilter terrainMesh)
     {
         terrainMesh.sharedMesh = MeshGenerator.GenerateTerrainMesh(GenerateNoiseMap(), meshHeightCurve, levelOfDetail, depth).CreateMesh();
 
@@ -60,11 +91,11 @@ public class MapGenerator : MonoBehaviour
 
     float[,] GenerateNoiseMap()
     {
-        float[,] noiseMap = new float[size, size];
+        float[,] noiseMap = new float[chunkSize, chunkSize];
 
-        for (int y = 0; y < size; y++)
+        for (int y = 0; y < chunkSize; y++)
         {
-            for (int x = 0; x < size; x++)
+            for (int x = 0; x < chunkSize; x++)
             {
                 noiseMap[x, y] = GetPointHeight(new Vector2(x, y));
             }
@@ -75,8 +106,6 @@ public class MapGenerator : MonoBehaviour
 
     float GetPointHeight(Vector2 point)
     {
-        Vector2 centerPoint = new Vector2(size / 2, size / 2);
-
         float pointHeight = 0;
         float amplitude = 1;
         float frequency = 1;
@@ -87,8 +116,8 @@ public class MapGenerator : MonoBehaviour
         float sampleX;
         float sampleY;
 
-        float halfHeight = size / 2f;
-        float halfWidth = size / 2f;
+        float halfHeight = chunkSize / 2f;
+        float halfWidth = chunkSize / 2f;
 
         for (int i = 0; i < octaves; i++)
         {
@@ -102,7 +131,7 @@ public class MapGenerator : MonoBehaviour
             amplitude *= persistance;
         }
 
-        float distanceFromEdge = Mathf.Max(Mathf.Abs(pointX / (float)size * 2 - 1), Mathf.Abs(pointY / (float)size * 2 - 1));
+        float distanceFromEdge = Mathf.Max(Mathf.Abs(pointX / (float)chunkSize * 2 - 1), Mathf.Abs(pointY / (float)chunkSize * 2 - 1));
 
         return 1 - pointHeight - EdgeHeightMultiplier(distanceFromEdge);
     }
@@ -116,19 +145,19 @@ public class MapGenerator : MonoBehaviour
 
     Texture2D GenerateColorMap()
     {
-        Texture2D colorTexture = new Texture2D(size, size);
+        Texture2D colorTexture = new Texture2D(chunkSize, chunkSize);
 
-        Color[] colorMap = new Color[size * size];
+        Color[] colorMap = new Color[chunkSize * chunkSize];
 
-        for (int y = 0; y < size; y++)
+        for (int y = 0; y < chunkSize; y++)
         {
-            for (int x = 0; x < size; x++)
+            for (int x = 0; x < chunkSize; x++)
             {
                 for (int i = 0; i < regions.Length; i++)
                 {
                     if (GetPointHeight(new Vector2(x, y)) >= regions[i].startHeight)
                     {
-                        colorMap[y * size + x] = regions[i].color;
+                        colorMap[y * chunkSize + x] = regions[i].color;
                     }
                 }
             }
