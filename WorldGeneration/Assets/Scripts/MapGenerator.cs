@@ -49,11 +49,16 @@ public class MapGenerator : MonoBehaviour
     void Start()
     {
         GenerateChunks();
+
+        mapSize = (chunkSize - 1) * amountOfChunksPerLine;
+
+        Debug.DrawLine(new Vector3(chunkSize / 2, 0, chunkSize / 2), new Vector3(chunkSize / 2, 100, chunkSize / 2), Color.red, 10f);
+        Debug.Log(chunkSize / 2);
     }
 
     public void GenerateChunks()
     {
-        mapSize = chunkSize * amountOfChunksPerLine;
+        mapSize = (chunkSize - 1) * amountOfChunksPerLine;
 
         amountOfChunksPerLine = (int)Mathf.Sqrt(amountOfChunks);
 
@@ -106,7 +111,7 @@ public class MapGenerator : MonoBehaviour
 
         terrainMesh.mesh = MeshGenerator.GenerateTerrainMesh(GenerateNoiseMap(chunk), meshHeightCurve, levelOfDetail, depth).CreateMesh();
 
-        terrainMesh.gameObject.GetComponent<MeshRenderer>().material.mainTexture = GenerateColorMap(chunk);
+        terrainMesh.gameObject.GetComponent<MeshRenderer>().sharedMaterial.mainTexture = GenerateColorMap(chunk);
     }
 
     float[,] GenerateNoiseMap(GameObject chunk)
