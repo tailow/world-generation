@@ -14,7 +14,7 @@ public class MapGenerator : MonoBehaviour
     int amountOfChunksPerLine;
     int amountOfTrees;
 
-    const int chunkSize = 97;
+    const int chunkSize = 96;
 
     public Region[] regions;
 
@@ -55,7 +55,7 @@ public class MapGenerator : MonoBehaviour
 
     public void GenerateChunks()
     {
-        mapSize = (chunkSize - 1) * amountOfChunksPerLine;
+        mapSize = chunkSize * amountOfChunksPerLine;
 
         amountOfChunksPerLine = (int)Mathf.Sqrt(amountOfChunks);
 
@@ -64,21 +64,13 @@ public class MapGenerator : MonoBehaviour
         offsetX = rng.Next(-50000, 50000);
         offsetY = rng.Next(-50000, 50000);
 
-        if (chunkParent.childCount != amountOfChunks)
-        {
-            for (int i = 0; i < chunkParent.childCount; i++)
-            {
-                DestroyImmediate(chunkParent.GetChild(i).gameObject);
-            }
-        }
-
         if (chunkParent.childCount == 0)
         {
             for (int y = 0; y < amountOfChunksPerLine; y++)
             {
                 for (int x = 0; x < amountOfChunksPerLine; x++)
                 {
-                    GameObject chunk = Instantiate(chunkPrefab, new Vector3(x * (chunkSize - 1), 0, y * (chunkSize - 1)), Quaternion.identity);
+                    GameObject chunk = Instantiate(chunkPrefab, new Vector3((x * chunkSize) + (chunkSize / 2), 0, (-y * chunkSize) - (chunkSize / 2)), Quaternion.identity);
 
                     chunk.transform.parent = chunkParent;
                 }
@@ -124,11 +116,11 @@ public class MapGenerator : MonoBehaviour
 
     float[,] GenerateNoiseMap(GameObject chunk)
     {
-        float[,] noiseMap = new float[chunkSize, chunkSize];
+        float[,] noiseMap = new float[chunkSize + 1, chunkSize + 1];
 
-        for (int y = 0; y < chunkSize; y++)
+        for (int y = 0; y < chunkSize + 1; y++)
         {
-            for (int x = 0; x < chunkSize; x++)
+            for (int x = 0; x < chunkSize + 1; x++)
             {
                 noiseMap[x, y] = GetPointHeight(new Vector2(x, y), chunk);
             }
@@ -143,8 +135,8 @@ public class MapGenerator : MonoBehaviour
         float amplitude = 1;
         float frequency = 1;
 
-        pointX = (int)point.x + (int)chunk.transform.position.x;
-        pointY = (int)point.y - (int)chunk.transform.position.z;
+        pointX = (int)chunk.transform.position.x + (int)point.x - (chunkSize / 2);
+        pointY = (int)chunk.transform.position.z - (int)point.y - (chunkSize / 2);
 
         float sampleX;
         float sampleY;
@@ -172,31 +164,21 @@ public class MapGenerator : MonoBehaviour
 
     float[,] GenerateFallOffMap(GameObject chunk)
     {
-        Vector2 center = new Vector2(mapSize / 2, 0);
+        float[,] fallOffMap = new float[chunkSize + 1, chunkSize + 1];
 
-        float[,] fallOffMap = new float[chunkSize, chunkSize];
-
-        for (int y = 0; y < chunkSize; y++)
+        for (int y = 0; y < chunkSize + 1; y++)
         {
-            for (int x = 0; x < chunkSize; x++)
+            for (int x = 0; x < chunkSize + 1; x++)
             {
-                float distanceFromCenter = Vector2.Distance(center, new Vector2(x + (int)chunk.transform.position.x, y - (int)chunk.transform.position.z));
+                int pointX = Mathf.Abs((int)chunk.transform.position.x + x - (chunkSize / 2));
+                int pointY = Mathf.Abs((int)chunk.transform.position.z - y + (chunkSize / 2));
 
-                float currentAlpha = 1;
+                float distanceFromEdge = Mathf.Max(Mathf.Abs(pointX / (float)mapSize * 2 - 1), Mathf.Abs(pointY / (float)mapSize * 2 - 1));
+
                 float a = fallOffStrength;
                 float b = fallOffStart;
 
-                if (1 - (distanceFromCenter / chunkSize) >= 0)
-                {
-                    currentAlpha = 1 - (distanceFromCenter / chunkSize);
-                }
-
-                else
-                {
-                    currentAlpha = 0;
-                }
-
-                float fallOffMultiplier = Mathf.Pow(currentAlpha, -a) / (Mathf.Pow(currentAlpha, -a) + Mathf.Pow(b - b * currentAlpha, -a));
+                float fallOffMultiplier = Mathf.Pow(distanceFromEdge, a) / (Mathf.Pow(distanceFromEdge, a) + Mathf.Pow(b - b * distanceFromEdge, a));
 
                 fallOffMap[x, y] = fallOffMultiplier;
             }
@@ -207,19 +189,25 @@ public class MapGenerator : MonoBehaviour
 
     Texture2D GenerateColorMap(GameObject chunk, MeshFilter terrainMesh, float[,] fallOffMap)
     {
-        Texture2D colorTexture = new Texture2D(chunkSize, chunkSize);
+        int increment = (levelOfDetail == 0) ? 1 : levelOfDetail * 2;
 
-        Color[] colorMap = new Color[chunkSize * chunkSize];
+        int colorMapSize = (chunkSize + 1) / increment;
 
-        for (int y = 0; y < chunkSize; y++)
+        Texture2D colorTexture = new Texture2D(colorMapSize, colorMapSize);
+
+        Color[] colorMap = new Color[colorMapSize * colorMapSize];
+
+        for (int y = 0; y < colorMapSize; y++)
         {
-            for (int x = 0; x < chunkSize; x++)
+            for (int x = 0; x < colorMapSize; x++)
             {
                 for (int i = 0; i < regions.Length; i++)
                 {
-                    if (meshHeightCurve.Evaluate(GetPointHeight(new Vector2(x, y), chunk)) - fallOffMap[x, y] >= regions[i].startHeight)
+                    float pointHeight = meshHeightCurve.Evaluate(Mathf.Clamp01(GetPointHeight(new Vector2(x * increment, y * increment), chunk) - fallOffMap[x * increment, y * increment])) * depth;
+
+                    if (pointHeight >= regions[i].startHeight)
                     {
-                        colorMap[y * chunkSize + x] = regions[i].color;
+                        colorMap[y * colorMapSize + x] = regions[i].color;
                     }
                 }
             }
