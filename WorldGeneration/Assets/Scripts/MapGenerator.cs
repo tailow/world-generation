@@ -12,6 +12,7 @@ public class MapGenerator : MonoBehaviour
     int pointY;
     int mapSize;
     int amountOfChunksPerLine;
+    int amountOfTrees;
 
     const int chunkSize = 97;
 
@@ -19,7 +20,8 @@ public class MapGenerator : MonoBehaviour
 
     public GameObject chunkPrefab;
 
-    public Transform terrainParent;
+    public Transform chunkParent;
+    public Transform treeParent;
 
     float minPointHeight;
     float maxPointHeight;
@@ -49,11 +51,6 @@ public class MapGenerator : MonoBehaviour
     void Start()
     {
         GenerateChunks();
-
-        mapSize = (chunkSize - 1) * amountOfChunksPerLine;
-
-        Debug.DrawLine(new Vector3(chunkSize / 2, 0, chunkSize / 2), new Vector3(chunkSize / 2, 100, chunkSize / 2), Color.red, 10f);
-        Debug.Log(chunkSize / 2);
     }
 
     public void GenerateChunks()
@@ -67,15 +64,15 @@ public class MapGenerator : MonoBehaviour
         offsetX = rng.Next(-50000, 50000);
         offsetY = rng.Next(-50000, 50000);
 
-        if (terrainParent.childCount != amountOfChunks)
+        if (chunkParent.childCount != amountOfChunks)
         {
-            for (int i = 0; i < terrainParent.childCount; i++)
+            for (int i = 0; i < chunkParent.childCount; i++)
             {
-                DestroyImmediate(terrainParent.GetChild(i).gameObject);
+                DestroyImmediate(chunkParent.GetChild(i).gameObject);
             }
         }
 
-        if (terrainParent.childCount == 0)
+        if (chunkParent.childCount == 0)
         {
             for (int y = 0; y < amountOfChunksPerLine; y++)
             {
@@ -83,24 +80,35 @@ public class MapGenerator : MonoBehaviour
                 {
                     GameObject chunk = Instantiate(chunkPrefab, new Vector3(x * (chunkSize - 1), 0, y * (chunkSize - 1)), Quaternion.identity);
 
-                    chunk.transform.parent = terrainParent;
+                    chunk.transform.parent = chunkParent;
                 }
             }
         }
 
-        for (int i = 0; i < terrainParent.childCount; i++)
+        for (int i = 0; i < chunkParent.childCount; i++)
         {
-            GenerateTerrain(terrainParent.GetChild(i).gameObject);
+            GenerateTerrain(chunkParent.GetChild(i).gameObject);
         }
     }
 
     public void DeleteChunks()
     {
-        if (terrainParent.childCount > 0)
+        if (chunkParent.childCount > 0)
         {
             for (int i = 0; i < amountOfChunks; i++)
             {
-                DestroyImmediate(terrainParent.GetChild(0).gameObject);
+                DestroyImmediate(chunkParent.GetChild(0).gameObject);
+            }
+        }
+    }
+
+    public void DeleteTrees()
+    {
+        if (treeParent.childCount > 0)
+        {
+            for (int i = 0; i < amountOfTrees; i++)
+            {
+                DestroyImmediate(treeParent.GetChild(0).gameObject);
             }
         }
     }

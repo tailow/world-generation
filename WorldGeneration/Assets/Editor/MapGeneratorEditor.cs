@@ -27,5 +27,10 @@ public class MapGeneratorEditor : Editor
         {
             mapGen.DeleteChunks();
         }
+
+        if (GUILayout.Button("Delete all trees"))
+        {
+            mapGen.DeleteTrees();
+        }
     }
 }
