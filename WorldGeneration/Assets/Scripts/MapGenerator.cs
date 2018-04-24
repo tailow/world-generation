@@ -79,7 +79,7 @@ public class MapGenerator : MonoBehaviour
 
         for (int i = 0; i < chunkParent.childCount; i++)
         {
-            GenerateTerrain(chunkParent.GetChild(i).gameObject);
+            GenerateTerrain(chunkParent.GetChild(i));
         }
     }
 
@@ -105,7 +105,7 @@ public class MapGenerator : MonoBehaviour
         }
     }
 
-    public void GenerateTerrain(GameObject chunk)
+    public void GenerateTerrain(Transform chunk)
     {
         MeshFilter terrainMesh = chunk.GetComponent<MeshFilter>();
 
@@ -114,7 +114,7 @@ public class MapGenerator : MonoBehaviour
         terrainMesh.gameObject.GetComponent<MeshRenderer>().material.mainTexture = GenerateColorMap(chunk, terrainMesh, GenerateFallOffMap(chunk));
     }
 
-    float[,] GenerateNoiseMap(GameObject chunk)
+    float[,] GenerateNoiseMap(Transform chunk)
     {
         float[,] noiseMap = new float[chunkSize + 1, chunkSize + 1];
 
@@ -129,14 +129,14 @@ public class MapGenerator : MonoBehaviour
         return noiseMap;
     }
 
-    float GetPointHeight(Vector2 point, GameObject chunk)
+    float GetPointHeight(Vector2 point, Transform chunk)
     {
         float pointHeight = 0;
         float amplitude = 1;
         float frequency = 1;
 
-        pointX = (int)chunk.transform.position.x + (int)point.x - (chunkSize / 2);
-        pointY = (int)chunk.transform.position.z - (int)point.y - (chunkSize / 2);
+        pointX = (int)chunk.position.x + (int)point.x - (chunkSize / 2);
+        pointY = (int)chunk.position.z - (int)point.y - (chunkSize / 2);
 
         float sampleX;
         float sampleY;
@@ -162,7 +162,7 @@ public class MapGenerator : MonoBehaviour
         return pointHeight;
     }
 
-    float[,] GenerateFallOffMap(GameObject chunk)
+    float[,] GenerateFallOffMap(Transform chunk)
     {
         float[,] fallOffMap = new float[chunkSize + 1, chunkSize + 1];
 
@@ -170,8 +170,8 @@ public class MapGenerator : MonoBehaviour
         {
             for (int x = 0; x < chunkSize + 1; x++)
             {
-                int pointX = Mathf.Abs((int)chunk.transform.position.x + x - (chunkSize / 2));
-                int pointY = Mathf.Abs((int)chunk.transform.position.z - y + (chunkSize / 2));
+                int pointX = Mathf.Abs((int)chunk.position.x + x - (chunkSize / 2));
+                int pointY = Mathf.Abs((int)chunk.position.z - y + (chunkSize / 2));
 
                 float distanceFromEdge = Mathf.Max(Mathf.Abs(pointX / (float)mapSize * 2 - 1), Mathf.Abs(pointY / (float)mapSize * 2 - 1));
 
@@ -187,7 +187,7 @@ public class MapGenerator : MonoBehaviour
         return fallOffMap;
     }
 
-    Texture2D GenerateColorMap(GameObject chunk, MeshFilter terrainMesh, float[,] fallOffMap)
+    Texture2D GenerateColorMap(Transform chunk, MeshFilter terrainMesh, float[,] fallOffMap)
     {
         int increment = (levelOfDetail == 0) ? 1 : levelOfDetail * 2;
 
@@ -203,7 +203,7 @@ public class MapGenerator : MonoBehaviour
             {
                 for (int i = 0; i < regions.Length; i++)
                 {
-                    float pointHeight = meshHeightCurve.Evaluate(Mathf.Clamp01(GetPointHeight(new Vector2(x * increment, y * increment), chunk) - fallOffMap[x * increment, y * increment])) * depth;
+                    float pointHeight = meshHeightCurve.Evaluate(GetPointHeight(new Vector2(x * increment, y * increment), chunk) - fallOffMap[x * increment, y * increment]) * depth;
 
                     if (pointHeight >= regions[i].startHeight)
                     {
