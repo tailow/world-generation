@@ -109,9 +109,9 @@ public class MapGenerator : MonoBehaviour
     {
         MeshFilter terrainMesh = chunk.GetComponent<MeshFilter>();
 
-        terrainMesh.mesh = MeshGenerator.GenerateTerrainMesh(GenerateNoiseMap(chunk), meshHeightCurve, levelOfDetail, depth).CreateMesh();
+        terrainMesh.mesh = MeshGenerator.GenerateTerrainMesh(GenerateNoiseMap(chunk), meshHeightCurve, levelOfDetail, depth, GenerateFallOffMap(chunk)).CreateMesh();
 
-        terrainMesh.gameObject.GetComponent<MeshRenderer>().sharedMaterial.mainTexture = GenerateColorMap(chunk);
+        terrainMesh.gameObject.GetComponent<MeshRenderer>().material.mainTexture = GenerateColorMap(chunk, terrainMesh, GenerateFallOffMap(chunk));
     }
 
     float[,] GenerateNoiseMap(GameObject chunk)
@@ -159,34 +159,45 @@ public class MapGenerator : MonoBehaviour
 
         pointHeight = pointHeight / maxPossibleHeight;
 
-        return pointHeight - GenerateFallOffMap(new Vector2(pointX, pointY), new Vector2(mapSize / 2, 0));
+        return pointHeight;
     }
 
-    float GenerateFallOffMap(Vector2 point, Vector2 center)
+    float[,] GenerateFallOffMap(GameObject chunk)
     {
-        float distanceFromCenter = Vector2.Distance(center, point);
+        Vector2 center = new Vector2(mapSize / 2, 0);
 
-        float currentAlpha = 1;
-        float a = fallOffStrength;
-        float b = fallOffStart;
+        float[,] fallOffMap = new float[chunkSize, chunkSize];
 
-
-        if (1 - (distanceFromCenter / chunkSize) >= 0)
+        for (int y = 0; y < chunkSize; y++)
         {
-            currentAlpha = 1 - (distanceFromCenter / chunkSize);
+            for (int x = 0; x < chunkSize; x++)
+            {
+                float distanceFromCenter = Vector2.Distance(center, new Vector2(x + (int)chunk.transform.position.x, y - (int)chunk.transform.position.z));
+
+                float currentAlpha = 1;
+                float a = fallOffStrength;
+                float b = fallOffStart;
+
+                if (1 - (distanceFromCenter / chunkSize) >= 0)
+                {
+                    currentAlpha = 1 - (distanceFromCenter / chunkSize);
+                }
+
+                else
+                {
+                    currentAlpha = 0;
+                }
+
+                float fallOffMultiplier = Mathf.Pow(currentAlpha, -a) / (Mathf.Pow(currentAlpha, -a) + Mathf.Pow(b - b * currentAlpha, -a));
+
+                fallOffMap[x, y] = fallOffMultiplier;
+            }
         }
 
-        else
-        {
-            currentAlpha = 0;
-        }
-
-        float fallOffMultiplier = Mathf.Pow(currentAlpha, -a) / (Mathf.Pow(currentAlpha, -a) + Mathf.Pow(b - b * currentAlpha, -a));
-
-        return fallOffMultiplier;
+        return fallOffMap;
     }
 
-    Texture2D GenerateColorMap(GameObject chunk)
+    Texture2D GenerateColorMap(GameObject chunk, MeshFilter terrainMesh, float[,] fallOffMap)
     {
         Texture2D colorTexture = new Texture2D(chunkSize, chunkSize);
 
@@ -198,7 +209,7 @@ public class MapGenerator : MonoBehaviour
             {
                 for (int i = 0; i < regions.Length; i++)
                 {
-                    if (GetPointHeight(new Vector2(x, y), chunk) >= regions[i].startHeight)
+                    if (meshHeightCurve.Evaluate(GetPointHeight(new Vector2(x, y), chunk)) - fallOffMap[x, y] >= regions[i].startHeight)
                     {
                         colorMap[y * chunkSize + x] = regions[i].color;
                     }
