@@ -203,7 +203,7 @@ public class MapGenerator : MonoBehaviour
             {
                 for (int i = 0; i < regions.Length; i++)
                 {
-                    float pointHeight = meshHeightCurve.Evaluate(GetPointHeight(new Vector2(x * increment, y * increment), chunk) - fallOffMap[x * increment, y * increment]) * depth;
+                    float pointHeight = GetPointHeight(new Vector2(x * increment, y * increment), chunk) - fallOffMap[x * increment, y * increment] * depth;
 
                     if (pointHeight >= regions[i].startHeight)
                     {
