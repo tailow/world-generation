@@ -55,9 +55,9 @@ public class MapGenerator : MonoBehaviour
 
     public void GenerateChunks()
     {
-        mapSize = chunkSize * amountOfChunksPerLine;
-
         amountOfChunksPerLine = (int)Mathf.Sqrt(amountOfChunks);
+
+        mapSize = chunkSize * amountOfChunksPerLine;
 
         System.Random rng = new System.Random(seed);
 
@@ -109,12 +109,12 @@ public class MapGenerator : MonoBehaviour
     {
         MeshFilter terrainMesh = chunk.GetComponent<MeshFilter>();
 
-        terrainMesh.mesh = MeshGenerator.GenerateTerrainMesh(GenerateNoiseMap(chunk), meshHeightCurve, levelOfDetail, depth, GenerateFallOffMap(chunk)).CreateMesh();
+        terrainMesh.mesh = MeshGenerator.GenerateTerrainMesh(GenerateNoiseMap(chunk, GenerateFallOffMap(chunk)), meshHeightCurve, levelOfDetail, depth, GenerateFallOffMap(chunk)).CreateMesh();
 
         terrainMesh.gameObject.GetComponent<MeshRenderer>().material.mainTexture = GenerateColorMap(chunk, terrainMesh, GenerateFallOffMap(chunk));
     }
 
-    float[,] GenerateNoiseMap(Transform chunk)
+    float[,] GenerateNoiseMap(Transform chunk, float[,] fallOffMap)
     {
         float[,] noiseMap = new float[chunkSize + 1, chunkSize + 1];
 
@@ -122,7 +122,7 @@ public class MapGenerator : MonoBehaviour
         {
             for (int x = 0; x < chunkSize + 1; x++)
             {
-                noiseMap[x, y] = GetPointHeight(new Vector2(x, y), chunk);
+                noiseMap[x, y] = Mathf.Clamp01(GetPointHeight(new Vector2(x, y), chunk) - fallOffMap[x, y]);
             }
         }
 
@@ -162,7 +162,7 @@ public class MapGenerator : MonoBehaviour
         return pointHeight;
     }
 
-    float[,] GenerateFallOffMap(Transform chunk)
+    public float[,] GenerateFallOffMap(Transform chunk)
     {
         float[,] fallOffMap = new float[chunkSize + 1, chunkSize + 1];
 
@@ -203,7 +203,7 @@ public class MapGenerator : MonoBehaviour
             {
                 for (int i = 0; i < regions.Length; i++)
                 {
-                    float pointHeight = GetPointHeight(new Vector2(x * increment, y * increment), chunk) - fallOffMap[x * increment, y * increment] * depth;
+                    float pointHeight = meshHeightCurve.Evaluate(Mathf.Clamp01((GetPointHeight(new Vector2(x * increment, y * increment), chunk)) - fallOffMap[x, y])) * depth;
 
                     if (pointHeight >= regions[i].startHeight)
                     {

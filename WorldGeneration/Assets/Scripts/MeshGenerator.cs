@@ -22,7 +22,7 @@ public static class MeshGenerator
         {
             for (int x = 0; x < size; x += increment)
             {
-                meshData.vertices[vertexIndex] = new Vector3(topLeftX + x, heightCurve.Evaluate(Mathf.Clamp01(heightMap[x, y] - fallOffMap[x, y])) * depth, topLeftZ - y);
+                meshData.vertices[vertexIndex] = new Vector3(topLeftX + x, heightCurve.Evaluate(heightMap[x, y]) * depth, topLeftZ - y);
                 meshData.uvs[vertexIndex] = new Vector2(x / (float)size, y / (float)size);
 
                 if (x < size - 1 && y < size - 1)
