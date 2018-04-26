@@ -20,6 +20,8 @@ public class MapGenerator : MonoBehaviour
 
     public GameObject chunkPrefab;
 
+    public GameObject[] treePrefabs;
+
     public Transform chunkParent;
     public Transform treeParent;
 
@@ -31,6 +33,10 @@ public class MapGenerator : MonoBehaviour
     public float lacunarity;
     public float fallOffStrength;
     public float fallOffStart;
+    public float treePositionRandomness;
+    public float treePositionGap;
+    public float treeStartHeight;
+    public float treeEndHeight;
 
     [Range(0, 1)]
     public float persistance;
@@ -81,6 +87,10 @@ public class MapGenerator : MonoBehaviour
         {
             GenerateTerrain(chunkParent.GetChild(i));
         }
+
+        DeleteTrees();
+
+        GenerateTrees();
     }
 
     public void DeleteChunks()
@@ -96,6 +106,8 @@ public class MapGenerator : MonoBehaviour
 
     public void DeleteTrees()
     {
+        amountOfTrees = treeParent.childCount;
+
         if (treeParent.childCount > 0)
         {
             for (int i = 0; i < amountOfTrees; i++)
@@ -111,7 +123,48 @@ public class MapGenerator : MonoBehaviour
 
         terrainMesh.mesh = MeshGenerator.GenerateTerrainMesh(GenerateNoiseMap(chunk, GenerateFallOffMap(chunk)), meshHeightCurve, levelOfDetail, depth, GenerateFallOffMap(chunk)).CreateMesh();
 
-        terrainMesh.gameObject.GetComponent<MeshRenderer>().material.mainTexture = GenerateColorMap(chunk, terrainMesh, GenerateFallOffMap(chunk));
+        var tempMaterial = new Material(terrainMesh.gameObject.GetComponent<MeshRenderer>().sharedMaterial);
+
+        terrainMesh.gameObject.GetComponent<MeshRenderer>().sharedMaterial = tempMaterial;
+
+        tempMaterial.mainTexture = GenerateColorMap(chunk, terrainMesh, GenerateFallOffMap(chunk));
+
+        chunk.GetComponent<MeshCollider>().sharedMesh = terrainMesh.sharedMesh;
+    }
+
+    public void GenerateTrees()
+    {
+        for (float y = 0; y > -mapSize; y -= (treePositionRandomness + treePositionGap))
+        {
+            for (float x = 0; x < mapSize; x += (treePositionRandomness + treePositionGap))
+            {
+                float treeSpawnX = Random.Range(x, x + treePositionRandomness);
+                float treeSpawnZ = Random.Range(y, y - treePositionRandomness);
+                float treeSpawnY;
+
+                RaycastHit hit;
+                Ray ray = new Ray(new Vector3(treeSpawnX, 200f, treeSpawnZ), Vector3.down);
+
+                if (Physics.Raycast(ray, out hit))
+                {
+                    treeSpawnY = hit.point.y;
+                }
+
+                else
+                {
+                    treeSpawnY = 10f;
+                }
+
+                Vector3 treeSpawnPosition = new Vector3(treeSpawnX, treeSpawnY + 2f, treeSpawnZ);
+
+                if (treeSpawnY > treeStartHeight && treeSpawnY < treeEndHeight)
+                {
+                    GameObject tree = Instantiate(treePrefabs[Random.Range(0, treePrefabs.Length)], treeSpawnPosition, Quaternion.identity);
+
+                    tree.transform.parent = treeParent;
+                }
+            }
+        }
     }
 
     float[,] GenerateNoiseMap(Transform chunk, float[,] fallOffMap)
