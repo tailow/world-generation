@@ -54,11 +54,6 @@ public class MapGenerator : MonoBehaviour
 
     #endregion
 
-    void Start()
-    {
-        GenerateChunks();
-    }
-
     public void GenerateChunks()
     {
         amountOfChunksPerLine = (int)Mathf.Sqrt(amountOfChunks);
