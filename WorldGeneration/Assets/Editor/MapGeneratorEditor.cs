@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-[CustomEditor (typeof (MapGenerator))]
+[CustomEditor(typeof(MapGenerator))]
 public class MapGeneratorEditor : Editor
 {
     public override void OnInspectorGUI()
@@ -21,16 +21,6 @@ public class MapGeneratorEditor : Editor
         if (GUILayout.Button("Generate"))
         {
             mapGen.GenerateChunks();
-        }
-
-        if (GUILayout.Button("Delete all chunks"))
-        {
-            mapGen.DeleteChunks();
-        }
-
-        if (GUILayout.Button("Delete all trees"))
-        {
-            mapGen.DeleteTrees();
         }
     }
 }
